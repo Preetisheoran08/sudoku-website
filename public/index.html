@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sudoku Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">Sudoku Game</div>
+        <div class="controls">
+            <button id="new-game" class="button">New Game</button>
+            <button id="restart" class="button">Restart</button>
+            <button id="theme-toggle" class="button">🌙 Dark Mode</button>
+            <select id="difficulty" class="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Sudoku Grid -->
+    <main>
+        <div class="side-panel">
+            <button id="undo" class="button">Undo</button>
+            <button id="redo" class="button">Redo</button>
+            <button id="hint" class="button">Hint</button>
+            <button id="validate" class="button">Validate</button>
+        </div>
+        <div class="sudoku-container">
+            <table id="sudoku-grid"></table>
+        </div>
+    </main>
+
+    <!-- Pop-up Messages -->
+    <div id="popup-row-complete" class="popup hidden">
+        <div class="popup-content">
+            <p>Row Completed!</p>
+            <button id="close-row-popup" class="button">Close</button>
+        </div>
+    </div>
+
+    <div id="popup-column-complete" class="popup hidden">
+        <div class="popup-content">
+            <p>Column Completed!</p>
+            <button id="close-column-popup" class="button">Close</button>
+        </div>
+    </div>
+
+    <div id="popup-level-complete" class="popup hidden">
+        <div class="popup-content">
+            <p>Level Completed!</p>
+            <button id="close-level-popup" class="button">Close</button>
+        </div>
+    </div>
+
+    <!-- Sound Effects -->
+    <audio id="invalid-move-sound" src="sounds/wrong.mp3"></audio>
+    <audio id="complete-sound" src="sounds/complete (1).mp3"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
