@@ -4,25 +4,19 @@ const Game = require('../models/Game');
 const router = express.Router();
 
 // Create a new game
-router.post('/new', async (req, res) => {
-    try {
-        const { userId, difficulty, puzzle, theme } = req.body;
-
-        // Save new game to the database
-        const game = new Game({
-            userId,
-            difficulty,
-            puzzle,
-            theme
-        });
-
-        await game.save();
-        res.status(201).json(game);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error creating game' });
-    }
+router.post('/api/games', async (req, res) => {
+  const newGame = new Game({
+    userId: req.body.userId,
+    difficulty: req.body.difficulty,
+    puzzle: req.body.puzzle,
+    userMoves: [],
+    theme: req.body.theme || 'light',
+    completed: false
+  });
+  await newGame.save();
+  res.status(201).json(newGame);
 });
+
 
 // Get game state by userId
 router.get('/:userId', async (req, res) => {
@@ -84,9 +78,11 @@ router.put('/:gameId/theme', async (req, res) => {
 });
 
 // Mark game as completed
+// Mark game as completed and save time taken
 router.put('/:gameId/complete', async (req, res) => {
     try {
         const { gameId } = req.params;
+        const { timeTaken } = req.body; // ⏱️ Get time from request body
 
         const game = await Game.findById(gameId);
         if (!game) {
@@ -94,6 +90,7 @@ router.put('/:gameId/complete', async (req, res) => {
         }
 
         game.completed = true;
+        game.timeTaken = timeTaken || 0; // Save time in seconds (default 0)
         await game.save();
 
         res.json(game);
@@ -102,5 +99,7 @@ router.put('/:gameId/complete', async (req, res) => {
         res.status(500).json({ message: 'Error completing game' });
     }
 });
+
+
 
 module.exports = router;

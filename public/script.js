@@ -1,26 +1,47 @@
-// Sound Effects
-const invalidMoveSound = new Audio('sounds/wrong.mp3');
-const completeSound = new Audio('sounds/complete (1).mp3');
-const hintSound = new Audio('sounds/hint.mp3');
-const validMoveSound = new Audio('sounds/correct.mp3'); // Added if you missed valid move sound
-
 // Sudoku Grid and Controls
 const grid = document.getElementById('sudoku-grid');
 const difficultySelector = document.getElementById('difficulty');
+const timerDisplay = document.getElementById('timer');
 const moveHistory = [];
 const redoHistory = [];
 
-// Sudoku Puzzle Definitions (with randomized clues)
-function generatePuzzle(difficulty) {
-    const allPuzzles = {
-        easy: '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
-        medium: '600300700008004000070020090500000800030700010000960002090050070002100800003006000',
-        hard: '300020500000800060010500000700005200040010000000600300000700040060009008000000002',
-    };
+let currentSolution = '';
+let timerInterval;
+let seconds = 0;
 
-    let puzzle = allPuzzles[difficulty];
-    puzzle = randomizeClues(puzzle, difficulty); // Randomize clues based on difficulty
-    return puzzle;
+// Timer Functions
+function startTimer() {
+    clearInterval(timerInterval);
+    seconds = 0;
+    timerInterval = setInterval(() => {
+        seconds++;
+        let mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+        let secs = (seconds % 60).toString().padStart(2, '0');
+        timerDisplay.textContent = `⏱ ${mins}:${secs}`;
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+}
+
+// Puzzle Data
+const puzzles = {
+    easy: '530070000600195000098000060800060003400803001700020006060000280000419005000080079',
+    medium: '600300700008004000070020090500000800030700010000960002090050070002100800003006000',
+    hard: '300020500000800060010500000700005200040010000000600300000700040060009008000000002',
+};
+
+const solutions = {
+    easy: '534678912672195348198342567859761423426853791713924856961537284287419635345286179',
+    medium: '645381792138274659279526391514639827326758914987162435891457263762193848453826171',
+    hard: '387124569524893761619576428736945218248317956951682347193758642862439175475261893',
+};
+
+// Generate Puzzle
+function generatePuzzle(difficulty) {
+    currentSolution = solutions[difficulty];
+    return randomizeClues(puzzles[difficulty], difficulty);
 }
 
 function randomizeClues(puzzle, difficulty) {
@@ -31,13 +52,13 @@ function randomizeClues(puzzle, difficulty) {
 
     for (let i = 0; i < totalCells; i++) {
         if (Math.random() > clues / totalCells) {
-            puzzleArray[i] = '0'; // Remove value (empty)
+            puzzleArray[i] = '0';
         }
     }
     return puzzleArray.join('');
 }
 
-// Populate Sudoku Grid
+// Generate Grid
 function generateGrid(puzzle) {
     grid.innerHTML = '';
     for (let i = 0; i < 9; i++) {
@@ -57,123 +78,90 @@ function generateGrid(puzzle) {
     }
 }
 
-// Handle User Input
+// Handle Input
 function handleInput(event) {
     const cell = event.target;
     if (!/^[1-9]$/.test(cell.innerText)) {
         cell.innerText = '';
-        invalidMoveSound.play();
         alert('Enter a valid number (1-9)');
     } else {
         moveHistory.push({ cell, prevValue: '', newValue: cell.innerText });
         redoHistory.length = 0;
-        validMoveSound.play();
-        checkRowCompletion(cell);  // Check for row completion after every input
-        checkColumnCompletion(cell);  // Check for column completion after every input
+        checkRowCompletion(cell);
+        checkColumnCompletion(cell);
     }
 }
 
-// Check if a row is completed
+// Row/Column Check
 function checkRowCompletion(cell) {
     const rowIndex = cell.parentElement.rowIndex;
     const cells = [...grid.rows[rowIndex].cells];
-    const isComplete = cells.every(cell => cell.textContent !== '');
-    if (isComplete) {
-        showRowCompletionPopup(rowIndex + 1);
+    if (cells.every(c => /^[1-9]$/.test(c.textContent))) {
+        showPopup(`🎉 Row ${rowIndex + 1} Completed!`);
     }
 }
 
-// Check if a column is completed
 function checkColumnCompletion(cell) {
     const colIndex = cell.cellIndex;
     const cells = [...grid.querySelectorAll(`td:nth-child(${colIndex + 1})`)];
-    const isComplete = cells.every(cell => cell.textContent !== '');
-    if (isComplete) {
-        showColumnCompletionPopup(colIndex + 1);
+    if (cells.every(c => /^[1-9]$/.test(c.textContent))) {
+        showPopup(`🎉 Column ${colIndex + 1} Completed!`);
     }
 }
 
-// Show pop-up for row completion
-function showRowCompletionPopup(rowNumber) {
+// Popup Function
+function showPopup(message) {
     const popup = document.createElement('div');
-    popup.classList.add('popup');
-    const content = document.createElement('div');
-    content.classList.add('popup-content');
-    content.innerHTML = `
-        <h2>🎉 Row ${rowNumber} Completed!</h2>
-        <button id="close-popup">Close</button>
+    popup.className = 'popup';
+    popup.innerHTML = `
+        <div class="popup-content">
+            <h2>${message}</h2>
+            <button class="popup-close">Close</button>
+        </div>
     `;
-    popup.appendChild(content);
     document.body.appendChild(popup);
-
-    document.getElementById('close-popup').addEventListener('click', () => {
-        popup.remove();
-    });
+    popup.querySelector('.popup-close').addEventListener('click', () => popup.remove());
 }
 
-// Show pop-up for column completion
-function showColumnCompletionPopup(colNumber) {
-    const popup = document.createElement('div');
-    popup.classList.add('popup');
-    const content = document.createElement('div');
-    content.classList.add('popup-content');
-    content.innerHTML = `
-        <h2>🎉 Column ${colNumber} Completed!</h2>
-        <button id="close-popup">Close</button>
-    `;
-    popup.appendChild(content);
-    document.body.appendChild(popup);
-
-    document.getElementById('close-popup').addEventListener('click', () => {
-        popup.remove();
-    });
-}
-
-// Undo Move
+// Undo/Redo
 document.getElementById('undo').addEventListener('click', () => {
-    const lastMove = moveHistory.pop();
-    if (lastMove) {
-        redoHistory.push(lastMove);
-        lastMove.cell.innerText = lastMove.prevValue;
+    const last = moveHistory.pop();
+    if (last) {
+        redoHistory.push(last);
+        last.cell.innerText = last.prevValue;
     }
 });
 
-// Redo Move
 document.getElementById('redo').addEventListener('click', () => {
-    const lastRedo = redoHistory.pop();
-    if (lastRedo) {
-        moveHistory.push(lastRedo);
-        lastRedo.cell.innerText = lastRedo.newValue;
+    const last = redoHistory.pop();
+    if (last) {
+        moveHistory.push(last);
+        last.cell.innerText = last.newValue;
     }
 });
 
-// Hint Feature
+// Hint
 document.getElementById('hint').addEventListener('click', () => {
-    const difficulty = difficultySelector.value;
-    const solution = solutions[difficulty];
     const cells = [...grid.querySelectorAll('td')];
-    const emptyCells = cells.filter((cell) => cell.textContent === '');
+    const emptyCells = cells.filter(c => c.textContent === '');
     if (emptyCells.length > 0) {
         const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         const index = cells.indexOf(randomCell);
-        randomCell.textContent = solution[index];
+        randomCell.textContent = currentSolution[index];
         randomCell.style.backgroundColor = '#f0e68c';
         setTimeout(() => (randomCell.style.backgroundColor = ''), 1000);
-        hintSound.play();
     } else {
-        alert('No empty cells to provide hints!');
+        alert('No empty cells for hints!');
     }
 });
 
-// Validation
+// Validate Puzzle
 document.getElementById('validate').addEventListener('click', () => {
-    const difficulty = difficultySelector.value;
-    const solution = solutions[difficulty];
     const cells = [...grid.querySelectorAll('td')];
     let isValid = true;
 
-    cells.forEach((cell, index) => {
-        if (cell.textContent !== solution[index]) {
+    cells.forEach((cell, i) => {
+        if (cell.textContent !== currentSolution[i]) {
             cell.style.backgroundColor = '#ffcccc';
             isValid = false;
         } else {
@@ -181,66 +169,65 @@ document.getElementById('validate').addEventListener('click', () => {
         }
     });
 
-    setTimeout(() => cells.forEach((cell) => (cell.style.backgroundColor = '')), 2000);
+    setTimeout(() => cells.forEach(c => (c.style.backgroundColor = '')), 2000);
 
     if (isValid) {
-        completeSound.play();
-        showLevelCompletedPopup(); // 👉 Show the Level Completed Popup when solved
+        showLevelCompletedPopup();
     } else {
-        alert('Some cells are incorrect.');
+        alert('Some cells are incorrect!');
     }
 });
 
-// New Game Button
+// Level Complete
+function showLevelCompletedPopup() {
+    showPopup('🎉 Level Completed!');
+    stopTimer();
+}
+
+// New Game
 document.getElementById('new-game').addEventListener('click', () => {
-    const difficulty = difficultySelector.value;
-    generateGrid(generatePuzzle(difficulty));
+    const diff = difficultySelector.value;
+    generateGrid(generatePuzzle(diff));
+    startTimer();
 });
 
-// Restart Button
+// Restart
 document.getElementById('restart').addEventListener('click', () => {
-    const difficulty = difficultySelector.value;
-    generateGrid(generatePuzzle(difficulty));
+    const diff = difficultySelector.value;
+    generateGrid(generatePuzzle(diff));
+    startTimer();
 });
 
-// Dark/Light Mode Toggle
+// Theme Toggle
 document.getElementById('theme-toggle').addEventListener('click', () => {
     document.body.classList.toggle('dark-mode');
-    const mode = document.body.classList.contains('dark-mode') ? '🌙 Dark Mode' : '☀️ Light Mode';
-    document.getElementById('theme-toggle').textContent = mode;
+    document.getElementById('theme-toggle').textContent =
+        document.body.classList.contains('dark-mode') ? '🌙 Dark Mode' : '☀️ Light Mode';
 });
 
-// 👉 Level Completed Popup
-function showLevelCompletedPopup() {
-    const popup = document.createElement('div');
-    popup.classList.add('popup');
 
-    const content = document.createElement('div');
-    content.classList.add('popup-content');
-    content.innerHTML = `
-        <h2>🎉 Level Completed!</h2>
-        <button id="close-popup">Close</button>
-    `;
 
-    popup.appendChild(content);
-    document.body.appendChild(popup);
+// Start default game
+generateGrid(generatePuzzle('easy'));
+startTimer();
 
-    document.getElementById('close-popup').addEventListener('click', () => {
-        popup.remove();
-    });
+fetch(`/api/games/${gameId}/complete`, {
+    method: 'PUT',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ timeTaken: secondsElapsed })
+});
 
-    // Save Game State (optional, bonus)
-    fetch('http://localhost:5000/api/games/new', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            userId: 'user123',
-            difficulty: difficultySelector.value,
-            puzzle: '', // If you want to store final puzzle you can pass it here
-            theme: document.body.classList.contains('dark-mode') ? 'dark' : 'light'
-        })
-    })
-    .then(response => response.json())
-    .then(data => console.log('New game saved:', data))
-    .catch(err => console.error('Error saving new game:', err));
-}
+fetch('/api/games', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    userId: 'user123',
+    difficulty: selectedDifficulty,
+    puzzle: puzzleString,
+    theme: 'light'
+  })
+});
+
+

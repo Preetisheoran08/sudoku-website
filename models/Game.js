@@ -1,4 +1,3 @@
-// models/Game.js
 const mongoose = require('mongoose');
 
 const gameSchema = new mongoose.Schema({
@@ -7,7 +6,8 @@ const gameSchema = new mongoose.Schema({
     puzzle: { type: String, required: true },
     userMoves: { type: Array, default: [] }, // Stores user inputs
     theme: { type: String, enum: ['light', 'dark'], default: 'light' },
-    completed: { type: Boolean, default: false }
+    completed: { type: Boolean, default: false },
+    timeTaken: { type: Number, default: 0 } // ⏱️ Time in seconds
 }, { timestamps: true });
 
 module.exports = mongoose.model('Game', gameSchema);
